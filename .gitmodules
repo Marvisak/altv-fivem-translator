@@ -1,0 +1,21 @@
+[submodule "deps/lua"]
+	path = deps/lua
+	url = https://github.com/citizenfx/lua.git
+	branch = luaglm-dev/cfx
+[submodule "deps/cpp-sdk"]
+	path = deps/cpp-sdk
+	url = https://github.com/altmp/cpp-sdk.git
+[submodule "deps/lua-rapidjson"]
+	path = deps/lua-rapidjson
+	url = https://github.com/citizenfx/lua-rapidjson.git
+	branch = grit
+[submodule "deps/rapidjson"]
+	path = deps/rapidjson
+	url = https://github.com/Tencent/rapidjson.git 
+[submodule "deps/lua-cmsgpack"]
+	path = deps/lua-cmsgpack
+	url = https://github.com/citizenfx/lua-cmsgpack.git
+	branch = grit
+[submodule "deps/msgpack-c"]
+	path = deps/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git
