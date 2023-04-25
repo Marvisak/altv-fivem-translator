@@ -70,6 +70,48 @@ bool FivemTranslatorResource::Stop() {
 void FivemTranslatorResource::OnEvent(const alt::CEvent* ev) {
 }
 
+void FivemTranslatorResource::OnTick() {
+    for (auto pair : this->threads) {
+        if (pair.second > alt::ICore::Instance().GetNetTime())
+            continue;
+        lua_rawgeti(this->state, LUA_REGISTRYINDEX, pair.first);
+        auto thread = lua_tothread(this->state, -1);
+        auto status = lua_status(thread);
+
+        bool dead = false;
+
+        if (status == LUA_OK) {
+            lua_Debug ar;
+            if (lua_getstack(thread, 0, &ar) <= 0 && lua_gettop(thread) == 0)
+                dead = true;
+        } else if (status != LUA_YIELD) {
+            dead = true;
+        }
+
+        if (dead) {
+            luaL_unref(this->state, LUA_REGISTRYINDEX, pair.first);
+            this->threads.erase(pair.first);
+            continue;
+        }
+
+        int nres;
+        auto result = lua_resume(thread, this->state, 0, &nres);
+
+        if (result == LUA_YIELD) {
+            if (lua_isnumber(thread, -1)) {
+                uint32_t timeout = (uint32_t)lua_tonumber(thread, -1);
+                lua_pop(thread, 1);
+                this->threads[pair.first] = alt::ICore::Instance().GetNetTime() + timeout;
+            } 
+        } else {
+            if (result != LUA_OK)
+                ShowError(thread);
+            luaL_unref(this->state, LUA_REGISTRYINDEX, pair.first);
+            this->threads.erase(pair.first);
+        }
+    }
+}
+
 bool FivemTranslatorResource::LoadLuaFile(const std::string& file_name) {
     auto package = this->resource->GetPackage(); 
 
@@ -85,13 +127,12 @@ bool FivemTranslatorResource::LoadLuaFile(const std::string& file_name) {
     package->CloseFile(file);
 
     if (luaL_loadbuffer(this->state, file_content.c_str(), file_length, file_name.c_str()) != LUA_OK) {
-        alt::ICore::Instance().LogError("Failed to parse " + file_name);
+        this->ShowError(this->state);
         return false;
     }
 
     if (lua_pcall(this->state, 0, LUA_MULTRET, 0) != LUA_OK) {
-        if (lua_isstring(this->state, -1))
-            alt::ICore::Instance().LogError(lua_tostring(this->state, -1)); 
+        this->ShowError(this->state);
         return false;
     }
 

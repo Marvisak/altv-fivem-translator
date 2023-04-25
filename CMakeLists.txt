@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.13)
 
 include(deps/cpp-sdk/CMakeLists.txt)
 
@@ -18,18 +18,15 @@ file(GLOB_RECURSE LUA_CMSGPACK_FILES ./deps/lua-cmsgpack/src/*.h ./deps/lua-cmsg
 
 set_source_files_properties(./deps/lua-cmsgpack/src/lua_cmsgpack.c PROPERTIES LANGUAGE CXX)
 
+# The _HAS_AUTO_PTR_ETC is here because grit version of lua-rapidjson uses ancient functions which arent supported from C++17, so we reenable them with this
 add_definitions(
 	-D_HAS_AUTO_PTR_ETC
 	-DMAKE_LIB
-	-DLUA_SANBODX
-	-DGLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-	-DLUA_GLM_INCLUDE_ALL
 	-DLUA_COMPILED_AS_HPP
 	-DGLM_FORCE_SSE2
 	-DLUA_RAPIDJSON_SANITIZE_KEYS
 	-DLUA_RAPIDJSON_ALLOCATOR
 	-DLUA_MSGPACK_COMPAT
-	-DGLM_ENABLE_EXPERIMENTAL
 )
 
 include_directories(
@@ -41,8 +38,22 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/deps/msgpack-c/include
 )
 
+set(MSGPACK_ENABLE_STATIC ON)
+set(LUA_SANDBOX ON)
+set(GLM_FORCE_ALIGNED_GENTYPES ON)
+set(MSGPACK_BUILD_EXAMPLES OFF)
+
+# Enable this only if you have ZLIB installed
+set(USE_ZLIB OFF)
+
+# Enable this only if you have OpenSSL installed
+# Enables using HTTPS in PerformHttpRequest
+set(USE_TLS ON)
+set(USE_OPEN_SSL ON)
+
 add_subdirectory(deps/lua)
 add_subdirectory(deps/msgpack-c)
+add_subdirectory(deps/IXWebSocket)
 
 add_library(${PROJECT_MODULE_NAME} SHARED ${PROJECT_SOURCE_FILES})
 add_library(lua-rapidjson STATIC ${LUA_RAPIDJSON_FILES})
@@ -50,4 +61,4 @@ add_library(lua-cmsgpack STATIC ${LUA_CMSGPACK_FILES})
 
 add_dependencies(${PROJECT_MODULE_NAME} alt-sdk)
 
-target_link_libraries(${PROJECT_MODULE_NAME} PRIVATE liblua_static lua-rapidjson msgpackc-static lua-cmsgpack)
+target_link_libraries(${PROJECT_MODULE_NAME} PRIVATE liblua_static lua-rapidjson msgpackc lua-cmsgpack ixwebsocket)

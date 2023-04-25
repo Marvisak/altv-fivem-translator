@@ -8,4 +8,5 @@
 #include <lua/lua.hpp>
 #include <lua-rapidjson/src/lua_rapidjsonlib.h>
 #include <lua-cmsgpack/src/lua_cmsgpacklib.h>
+#include <IXWebSocket/ixwebsocket/IXHttpClient.h>
 #include "macros.h"
