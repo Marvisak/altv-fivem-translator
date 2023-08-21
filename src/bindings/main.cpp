@@ -33,10 +33,10 @@ int PerformHttpRequest(lua_State* state) {
 	auto args = ArgReader(state);
 	auto url = args.GetString();
 	if (!url)
-		return luaL_error(state, "Required argument 'url' is not string");
+		return luaL_typeerror(state, 1, "string");
 	auto callback = args.GetFunction();
 	if (callback == -1)
-		return luaL_error(state, "Required argument 'callback' is not function");
+		return luaL_typeerror(state, 2, "function");
 	auto method = args.GetString();
 	if (!method)
 		method = ix::HttpClient::kGet.c_str();

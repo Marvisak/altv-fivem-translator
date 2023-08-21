@@ -2,7 +2,7 @@
 #include "../args.h"
 
 int GetPlayers(lua_State* state) {
-    auto players = alt::ICore::Instance().GetPlayers();
+    auto players = alt::ICore::Instance().GetBaseObjects(alt::IBaseObject::Type::PLAYER);
     lua_createtable(state, (int)players.size(), 0);
     for (int i = 0; i < players.size(); i++) {
         LUA_SET_TABLE_ELEMENT_INT(state, i, players[i]->GetID());
@@ -24,7 +24,8 @@ int GetPlayerIdentifiers(lua_State* state) {
     LUA_SET_TABLE_ELEMENT_STRING(state, 0, ("ip:" + ip).c_str());
     // The FiveM's license is something much different, but it's definitelly better than nothing
     LUA_SET_TABLE_ELEMENT_STRING(state, 1, ("license:" + std::to_string(player->GetSocialID())).c_str());
-    LUA_SET_TABLE_ELEMENT_STRING(state, 2, ("discord:" + std::to_string(player->GetDiscordId())).c_str());
+    if (player->GetDiscordId() != 0)
+        LUA_SET_TABLE_ELEMENT_STRING(state, 2, ("discord:" + std::to_string(player->GetDiscordId())).c_str());
     return 1;
 }
 

@@ -6,9 +6,7 @@ alt::IPlayer* ArgReader::GetPlayer() {
         return player;
     if (lua_isnumber(this->state, this->index)) {
         auto id = (uint16_t)lua_tonumber(this->state, this->index);
-        auto entity = alt::ICore::Instance().GetEntityByID(id);
-        if (entity && entity->GetType() == alt::IBaseObject::Type::PLAYER)
-            player = dynamic_cast<alt::IPlayer*>(entity);
+        player = dynamic_cast<alt::IPlayer*>(alt::ICore::Instance().GetBaseObjectByID(alt::IBaseObject::Type::PLAYER, id));
     }
     this->index++;
     return player;

@@ -5,7 +5,7 @@ IF NOT EXIST build\ (
 )
 pushd build
 cmake ..
-cmake --build . --config Release
+cmake --build . --config Release %*
 popd
 
 IF NOT EXIST dist\ (

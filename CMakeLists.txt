@@ -36,9 +36,12 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/deps/lua
 	${PROJECT_SOURCE_DIR}/deps/rapidjson/include
 	${PROJECT_SOURCE_DIR}/deps/msgpack-c/include
+
+	# CMake is weird
+	${PROJECT_BINARY_DIR}/deps/msgpack-c/include
+	${PROJECT_BINARY_DIR}/deps/msgpack-c/include/msgpack
 )
 
-set(MSGPACK_ENABLE_STATIC ON)
 set(LUA_SANDBOX ON)
 set(GLM_FORCE_ALIGNED_GENTYPES ON)
 set(MSGPACK_BUILD_EXAMPLES OFF)
@@ -48,8 +51,8 @@ set(USE_ZLIB OFF)
 
 # Enable this only if you have OpenSSL installed
 # Enables using HTTPS in PerformHttpRequest
-set(USE_TLS ON)
-set(USE_OPEN_SSL ON)
+set(USE_TLS OFF)
+set(USE_OPEN_SSL OFF)
 
 add_subdirectory(deps/lua)
 add_subdirectory(deps/msgpack-c)
@@ -61,4 +64,4 @@ add_library(lua-cmsgpack STATIC ${LUA_CMSGPACK_FILES})
 
 add_dependencies(${PROJECT_MODULE_NAME} alt-sdk)
 
-target_link_libraries(${PROJECT_MODULE_NAME} PRIVATE liblua_static lua-rapidjson msgpackc lua-cmsgpack ixwebsocket)
+target_link_libraries(${PROJECT_MODULE_NAME} PRIVATE liblua_static lua-rapidjson msgpack-c lua-cmsgpack ixwebsocket)
