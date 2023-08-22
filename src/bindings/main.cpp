@@ -28,6 +28,30 @@ int print(lua_State* state) {
     return 0;
 }
 
+int AddEventHandler(lua_State* state) {
+	auto args = ArgReader(state);
+
+	auto event_name = args.GetString();
+	if (!event_name)
+		return 0;
+
+	auto callback = args.GetFunction();
+	if (callback == -1)
+		return 0;
+
+	auto resource = FivemTranslatorRuntime::Instance()->GetResource(state);
+
+	resource->RegisterEvent(event_name, false);
+	auto index = resource->AddEvent(event_name, callback);
+
+	lua_createtable(state, 1, 0);
+	LUA_SET_TABLE_PAIR_STRING(state, "name", event_name);
+	LUA_SET_TABLE_PAIR_STRING_INT(state, "key", index);
+
+	return 1;
+}
+
+#ifdef ALT_SERVER_API
 int PerformHttpRequest(lua_State* state) {
 	auto http_client = FivemTranslatorRuntime::Instance()->GetResource(state)->GetHttpClient();
 	auto args = ArgReader(state);
@@ -75,9 +99,14 @@ int PerformHttpRequest(lua_State* state) {
 	});
 	return 0;
 }
+#endif
 
 
 void AddMainFunctions(lua_State* state) {
 	LUA_ADD_FUNCTION(state, "print", print);
+	LUA_ADD_FUNCTION(state, "AddEventHandler", AddEventHandler);
+
+	#ifdef ALT_SERVER_API
 	LUA_ADD_FUNCTION(state, "PerformHttpRequest", PerformHttpRequest);
+	#endif
 }

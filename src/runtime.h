@@ -1,11 +1,15 @@
+#pragma once
+
 #include "main.h"
 #include "resource.h"
+#include "events/events.h"
 
 class FivemTranslatorRuntime : public alt::IScriptRuntime {
     static FivemTranslatorRuntime* instance;
     std::vector<FivemTranslatorResource*> resources;
 public:
     FivemTranslatorRuntime() {
+        RegisterEvents();
         this->instance = this;
     }
 

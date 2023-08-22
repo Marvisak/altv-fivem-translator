@@ -13,7 +13,7 @@ int CreateThread(lua_State* state) {
 
     lua_pushvalue(state, 1);
     lua_xmove(state, thread, 1);
-    FivemTranslatorRuntime::Instance()->GetResource(state)->AddThread(thread_ref, 0);
+    FivemTranslatorRuntime::Instance()->GetResource(state)->AddThread(thread_ref, 0, 0);
 
     return 0;
 }
@@ -26,7 +26,7 @@ int SetTimeout(lua_State* state) {
     lua_xmove(state, thread, 1);
 
 	uint32_t timeout = (uint32_t)lua_tointeger(state, 1);
-    FivemTranslatorRuntime::Instance()->GetResource(state)->AddThread(thread_ref, timeout + alt::ICore::Instance().GetNetTime());
+    FivemTranslatorRuntime::Instance()->GetResource(state)->AddThread(thread_ref, timeout + alt::ICore::Instance().GetNetTime(), 0);
 
     return 0;
 }

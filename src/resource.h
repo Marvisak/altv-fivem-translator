@@ -1,10 +1,26 @@
+#pragma once
+
 #include "main.h"
+
+struct Event {
+    int handler_index;
+    std::map<int, int> handlers;
+    bool safe_for_net;
+};
+
+struct Thread {
+    int thread_ref;
+    uint32_t timeout;
+    int narg;
+};
 
 class FivemTranslatorResource : public alt::IResource::Impl {
     alt::IResource* resource;
     lua_State* state;
-    std::map<int, uint32_t> threads;
+    std::vector<Thread> threads;
     ix::HttpClient* http_client;
+    
+    std::map<std::string, Event> events;
 public:
     FivemTranslatorResource(alt::IResource* resource) : resource(resource) {
         http_client = new ix::HttpClient(true);
@@ -33,14 +49,16 @@ public:
             alt::ICore::Instance().LogError(error);
     }
 
-    void AddThread(int thread, int timeout) {
-        this->threads[thread] = timeout;
+    void AddThread(int thread_ref, uint32_t timeout, int narg) {
+        this->threads.push_back({thread_ref, timeout, narg});
     }
+    int AddEvent(std::string event_name, int callback);
+    void RegisterEvent(std::string event_name, bool safe_for_net);
 
     std::vector<lua_State*> GetThreads() {
         std::vector<lua_State*> thread_states;
         for (auto thread : threads) {
-            lua_rawgeti(this->state, LUA_REGISTRYINDEX, thread.first);
+            lua_rawgeti(this->state, LUA_REGISTRYINDEX, thread.thread_ref);
             thread_states.push_back(lua_tothread(this->state, -1));
         }
          

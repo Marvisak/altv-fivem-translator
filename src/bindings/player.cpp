@@ -1,6 +1,7 @@
 #include "bindings.h"
 #include "../args.h"
 
+#ifdef ALT_SERVER_API
 int GetPlayers(lua_State* state) {
     auto players = alt::ICore::Instance().GetBaseObjects(alt::IBaseObject::Type::PLAYER);
     lua_createtable(state, (int)players.size(), 0);
@@ -28,8 +29,11 @@ int GetPlayerIdentifiers(lua_State* state) {
         LUA_SET_TABLE_ELEMENT_STRING(state, 2, ("discord:" + std::to_string(player->GetDiscordId())).c_str());
     return 1;
 }
+#endif
 
 void AddPlayerFunctions(lua_State* state) {
+    #ifdef ALT_SERVER_API
     LUA_ADD_FUNCTION(state, "GetPlayers", GetPlayers);
     LUA_ADD_FUNCTION(state, "GetPlayerIdentifiers", GetPlayerIdentifiers);
+    #endif
 }

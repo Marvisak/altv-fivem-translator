@@ -1,5 +1,6 @@
 #include "resource.h"
 #include "bindings/bindings.h"
+#include "events/events.h"
 
 // https://github.com/citizenfx/fivem/blob/master/code/components/citizen-scripting-lua/src/LuaScriptRuntime.cpp#L164
 static const luaL_Reg lualibs[] = {
@@ -68,48 +69,95 @@ bool FivemTranslatorResource::Stop() {
 }
 
 void FivemTranslatorResource::OnEvent(const alt::CEvent* ev) {
+    auto type = ev->GetType();
+
+    if (!event_handlers.contains(type))
+        return;
+    
+    auto event_handler = event_handlers[type];
+    auto event_name = event_handler.name;
+    if (!events.contains(event_name))
+        return;
+
+    auto event = this->events[event_name];
+    if (event.handlers.empty())
+        return;
+    
+    if (!event.safe_for_net && type == 
+    #ifdef ALT_SERVER_API
+    alt::CEvent::Type::CLIENT_SCRIPT_EVENT
+    #elif ALT_CLIENT_API
+    alt::CEvent::Type::SERVER_SCRIPT_EVENT
+    #endif
+    ) 
+        return;
+    
+    for (auto handler : event.handlers) {
+
+        lua_State* thread = lua_newthread(this->state);
+        int thread_ref = luaL_ref(this->state, LUA_REGISTRYINDEX);
+
+		lua_rawgeti(this->state, LUA_REGISTRYINDEX, handler.second);
+        lua_pushvalue(this->state, -1);
+
+        lua_xmove(this->state, thread, 1);
+
+        int narg = event_handler.args(ev, thread);
+
+        this->AddThread(thread_ref, 0, narg);
+
+    }
 }
 
 void FivemTranslatorResource::OnTick() {
-    for (auto pair : this->threads) {
-        if (pair.second > alt::ICore::Instance().GetNetTime())
+    std::vector<int> dead_threads;
+    for (auto& thread : this->threads) {
+        if (thread.timeout > alt::ICore::Instance().GetNetTime())
             continue;
-        lua_rawgeti(this->state, LUA_REGISTRYINDEX, pair.first);
-        auto thread = lua_tothread(this->state, -1);
-        auto status = lua_status(thread);
 
-        bool dead = false;
+        lua_rawgeti(this->state, LUA_REGISTRYINDEX, thread.thread_ref);
+        auto lua_thread = lua_tothread(this->state, -1);
+        auto status = lua_status(lua_thread);
+
+        bool remove = false;
 
         if (status == LUA_OK) {
             lua_Debug ar;
-            if (lua_getstack(thread, 0, &ar) <= 0 && lua_gettop(thread) == 0)
-                dead = true;
+            if (lua_getstack(lua_thread, 0, &ar) <= 0 && lua_gettop(lua_thread) == 0)
+                remove = true;
         } else if (status != LUA_YIELD) {
-            dead = true;
+            remove = true;
         }
 
-        if (dead) {
-            luaL_unref(this->state, LUA_REGISTRYINDEX, pair.first);
-            this->threads.erase(pair.first);
-            continue;
+        if (!remove) {
+            int nres;
+            auto result = lua_resume(lua_thread, this->state, thread.narg, &nres);
+
+            if (result == LUA_YIELD) {
+                if (lua_isnumber(lua_thread, -1)) {
+                    uint32_t timeout = (uint32_t)lua_tonumber(lua_thread, -1);
+                    lua_pop(lua_thread, 1);
+                    thread.timeout = alt::ICore::Instance().GetNetTime() + timeout;
+                } 
+            } else {
+                if (result != LUA_OK)
+                    ShowError(lua_thread);
+                remove = true;
+            }
         }
 
-        int nres;
-        auto result = lua_resume(thread, this->state, 0, &nres);
-
-        if (result == LUA_YIELD) {
-            if (lua_isnumber(thread, -1)) {
-                uint32_t timeout = (uint32_t)lua_tonumber(thread, -1);
-                lua_pop(thread, 1);
-                this->threads[pair.first] = alt::ICore::Instance().GetNetTime() + timeout;
-            } 
-        } else {
-            if (result != LUA_OK)
-                ShowError(thread);
-            luaL_unref(this->state, LUA_REGISTRYINDEX, pair.first);
-            this->threads.erase(pair.first);
+        // Remove the thread we pushed on to the stack
+        lua_pop(this->state, 1);
+        if (remove) {
+            dead_threads.push_back(thread.thread_ref);
+            luaL_unref(this->state, LUA_REGISTRYINDEX, thread.thread_ref);
         }
     }
+
+    for (auto dead_thread : dead_threads)
+        this->threads.erase(std::remove_if(this->threads.begin(), this->threads.end(), [&](Thread thread) {
+            return thread.thread_ref == dead_thread;
+        }));
 }
 
 bool FivemTranslatorResource::LoadLuaFile(const std::string& file_name) {
@@ -137,6 +185,29 @@ bool FivemTranslatorResource::LoadLuaFile(const std::string& file_name) {
     }
 
     return true;
+}
+
+void FivemTranslatorResource::RegisterEvent(std::string event_name, bool safe_for_net) {
+    if (this->events.contains(event_name)) {
+        if (safe_for_net)
+            this->events[event_name].safe_for_net = true;
+        return;
+    }
+
+	for (auto event_handler : event_handlers)
+		if (event_handler.second.name == event_name)
+			if (!alt::ICore::Instance().IsEventEnabled(event_handler.first))
+				alt::ICore::Instance().ToggleEvent(event_handler.first, true);
+    
+    this->events[event_name] = {0, {}, safe_for_net};
+}
+
+int FivemTranslatorResource::AddEvent(std::string event_name, int callback) {
+    if (!this->events.contains(event_name))
+        return 0;
+    
+    this->events[event_name].handlers[this->events[event_name].handler_index] = callback;
+    return this->events[event_name].handler_index++;
 }
 
 void FivemTranslatorResource::SetDefaultFunctions() {

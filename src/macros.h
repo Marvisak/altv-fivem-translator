@@ -25,3 +25,9 @@
     lua_pushstring(state, value); \
     lua_settable(state, -3); \
 }
+
+#define LUA_SET_TABLE_PAIR_STRING_INT(state, key, value) { \
+    lua_pushstring(state, key); \
+    lua_pushinteger(state, value); \
+    lua_settable(state, -3); \
+}
